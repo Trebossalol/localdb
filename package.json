@@ -1,0 +1,38 @@
+{
+  "name": "@trebossa/localdb",
+  "version": "1.1.0",
+  "main": "lib/index.js",
+  "types": "lib",
+  "contributors": [
+    "trebossa"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Trebossalol/localdb"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "p": "npm publish --access=public"
+  },
+  "keywords": [
+    "database",
+    "local database",
+    "json storage",
+    "temp database db",
+    "db"
+  ],
+  "author": "trebossa",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^4.3.2"
+  },
+  "files": [
+    "lib",
+    "tsconfig.json"
+  ],
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {},
+  "description": "Local database, easy accessibility, fast, good :)"
+}
