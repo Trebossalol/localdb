@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import { resolve, join } from 'path'
 import Document from './Document'
 import { CollectionConfig, Searchquery, QueryCallback, DocumentLike,  AtomicOperator } from './types'
+import { readFile, writeFile, exists, mkdir, readdir } from './Util'
 
 /**
  * @class Collection
@@ -22,13 +23,14 @@ export default class Collection {
         if (config.singleInstance === true) this._updateStoragePath()
     }
 
-    _updateStoragePath() {
+    async _updateStoragePath(): Promise<Collection> {
         const storagePath = this._getPath()
+        const storageExists = exists(storagePath)
 
-        if (!fs.existsSync(storagePath)) {
-            fs.mkdirSync(resolve(this.config.folderPath), { recursive: true })
-            fs.writeFileSync(storagePath, this._getJson([]))
-        } else if (this.config.onRestartBehaviour === 'OVERWRITE') fs.writeFileSync(storagePath, this._getJson([]))
+        if (!storageExists) {
+            await mkdir(resolve(this.config.folderPath), { recursive: true })
+            await writeFile(storagePath, this._getJson([]))
+        } else if (this.config.onRestartBehaviour === 'OVERWRITE') await writeFile(storagePath, this._getJson([]))
         return this
     }
 
@@ -42,21 +44,35 @@ export default class Collection {
         return join(this.config.folderPath, this._getFilename())
     }
     
-    private _getStorage() {
+    private async _getStorage(): Promise<any[]> {
+
+        async function overwrite(): Promise<void> {
+            await writeFile(this._getPath(), this._getJson([]))
+        }
+
         try {
-            const storage = fs.readFileSync(this._getPath())
-            const parsed = JSON.parse(String(storage))
+            const storage = await readFile(this._getPath())
+            const parsed: any[] = JSON.parse(String(storage))
             return parsed    
         } catch(e) {
             if (this.config.onErrorBehaviour == 'CREATE_BACKUP_AND_OVERWRITE') {
-                const backupFilePrefix = 'backup'
-                const backupData = fs.readFileSync(this._getPath(), 'utf8')
-                const newIndex = (fs.readdirSync(this.config.folderPath)
-                    .filter(e => e.split('-')[0] === backupFilePrefix)
-                    .reduce((pv, cv) => parseInt(cv.split('-')[1]) + pv, 0)) + 1
-                fs.writeFileSync(`${backupFilePrefix}-${newIndex}`, backupData)
-            } else if (this.config.onErrorBehaviour == 'OVERWRITE') fs.writeFileSync(this._getPath(), this._getJson([]))
-            else throw new Error('Invalid localdb file.')
+
+                const backupFilePrefix = 'bp'
+                const backupData = await readFile(this._getPath(), 'utf8')
+                const backupFolderPath = join(this.config.folderPath, '/backup')
+                const backupFolderExists = await exists(backupFolderPath)
+
+                if (!backupFolderExists) await mkdir(backupFolderPath)
+
+                const folder = await readdir(backupFolderPath)
+                const index = folder
+                    .filter(e => e.split('_')[0] === backupFilePrefix)
+                    .map(e => Number(e.split('_')[1]))
+
+                await writeFile(join(backupFolderPath, `${backupFilePrefix}_${index.length == 0 ? 1 : Math.max(...index) + 1}_${this.name}.json`), backupData)
+                await overwrite()
+            } else if (this.config.onErrorBehaviour == 'OVERWRITE') await overwrite()
+            else throw new Error('Invalid localdb file')
         }
     }
 
@@ -65,24 +81,24 @@ export default class Collection {
         return normalize != null ? normalize(data) : JSON.stringify(data, null, 3)
     }
 
-    private _store(data: any) {
+    private async _store(data: any) {
         const json = this._getJson(data)
-        fs.writeFileSync(this._getPath(), json)
+        await writeFile(this._getPath(), json)
         return this
     }
 
-    private _queryAndStore(query: Searchquery, callback: QueryCallback) {
-        let storage = this._getStorage()
+    private async _queryAndStore(query: Searchquery, callback: QueryCallback): Promise<Collection> {
+        let storage = await this._getStorage()
         const entries = Object.entries(query)
 
         let newStorage = storage.map((document: DocumentLike) => {
             let match = false
+
+            function setMatch(expression: boolean) {
+                if (expression) match = true
+            }
+
             entries.forEach(([key, value]: [string, any]) => {
-
-                function setMatch(expression: boolean) {
-                    if (expression) match = true
-                }
-
                 const splited = key.split('.')
                 switch(splited.length) {
                     case 1:
@@ -102,8 +118,7 @@ export default class Collection {
                 }
             })
             if (!match) return document
-            let newDocument = callback(document)
-            return newDocument
+            return callback(document)
         }).filter(e => e != null)
 
         this._store(newStorage)
@@ -131,15 +146,15 @@ export default class Collection {
      * @returns Collection
      * @description Insert documents to the current collection
      */
-    insert<DocType = any>(...documents: DocumentLike<DocType>[]) {
-        let storage = this._getStorage()
+    async insert<DocType = any>(...documents: DocumentLike<DocType>[]): Promise<DocumentLike<DocType>[]> {
+        let storage = await this._getStorage()
         documents = documents.map(doc => {
             if (doc._id == null) doc._id = this.config.docIdGenerator(doc)
             return doc
         })
         storage.push(...documents)
         this._store(storage)
-        return this
+        return documents
     }
 
     /**
@@ -148,72 +163,68 @@ export default class Collection {
      * @returns Collection
      * @description Updates every document which matches the given query
      */
-    update<DocType = any>(query: Searchquery, update: AtomicOperator<DocType>) {
+    async update<DocType = any>(query: Searchquery, update: AtomicOperator<DocType>): Promise<Collection> {
         
         const entries = Object.entries(update)
 
-        entries.forEach(([atomicOperator]) => {
+        entries.forEach(async([atomicOperator]) => {
             switch(atomicOperator) {
 
                 case '$set':
-                    this._queryAndStore(query, (document) => ({ ...document, ...update.$set }))
+                    await this._queryAndStore(query, (document) => ({ ...document, ...update.$set }))
                     break
 
                 case '$push':
-                    this._queryAndStore(query, (document) => {
+                    await this._queryAndStore(query, (document) => {
                         const $push = update.$push
                         Object.entries($push).forEach(([key, arr]) => {
                             if (Array.isArray(document[key]) === true) document[key].push(...arr)
                         })
-
                         return document
                     })
                     break
 
                 case '$increase': 
-                    this._queryAndStore(query, (document) => {
+                    await this._queryAndStore(query, (document) => {
                         const entries = Object.entries(update.$increase)
                         entries.forEach(([key, increment]) => {
                             document[key] += increment
                         })
-
                         return document
                     })
                     break
             
                 case '$decrease':
-                    this._queryAndStore(query, (document) => {
+                    await this._queryAndStore(query, (document) => {
                         const entries = Object.entries(update.$decrease)
                         entries.forEach(([key, decrement]) => {
                             document[key] -= decrement
                         })
-
                         return document
                     }) 
                     break
             
                 case '$rename':
-                    this._queryAndStore(query, (document) => {
+                    await this._queryAndStore(query, (document) => {
                         update.$rename.forEach(([from, to]) => {
                             const value = document[from]
                             delete document[from]
                             document[to] = value
                         })
-
                         return document
                     })
                     break
 
                 case '$modify':
-                    this._queryAndStore(query, update.$each)
+                    await this._queryAndStore(query, update.$each)
                     break
 
                 case '$writeConcern': 
-                    const doc = this.findOne(query)
-                    if (doc == null) this.insert(update.$writeConcern)
+                    const doc = await this.findOne<DocType>(query)
+                    if (doc == null) await this.insert(update.$writeConcern)
+                    
             }
         })
-
         return this
     }
 
@@ -222,8 +233,10 @@ export default class Collection {
      * @returns Collection
      * @description Deletes every document which matches the given query(s)
      */
-    delete(...querys: Searchquery[]) {
-        querys.forEach(query => this._queryAndStore(query, () => null))
+    async delete(...querys: Searchquery[]): Promise<Collection> {
+        for (const query of querys) {
+            await this._queryAndStore(query, () => null)
+        }
         return this
     }
 
@@ -232,15 +245,16 @@ export default class Collection {
      * @returns document[] or an empty array
      * @description Read documents by a search query 
      */
-    find<T = any>(query: Searchquery): T[] {
-        const storage = this._getStorage()
+    async find<DocType = any>(query: Searchquery): Promise<DocType[]> {
+        const storage = await this._getStorage()
         const entries = Object.entries(query)
-        const queried: T[] = storage.filter(document => {
+        const queried: DocType[] = storage.filter(document => {
             let match = false
             entries.forEach(([key, value]) => {
                 if (document[key] === value) match = true
             })
             if (match) return document
+            return false
         })
         return queried
     }
@@ -250,8 +264,8 @@ export default class Collection {
      * @returns document or an empty array
      * @description Find the first document matching the query
      */
-    findOne<DocType = any>(query: Searchquery): DocType | null {
-        return this.find<DocType>(query)[0]
+    async findOne<DocType = any>(query: Searchquery): Promise<DocType | null> {
+        return (await this.find<DocType>(query))[0]
     }
  
     /**
@@ -260,12 +274,15 @@ export default class Collection {
      * @returns Collection
      * @description Copy the first queried document
      */
-    copy<DocType = any>(query: Searchquery, update: AtomicOperator<DocType> = null) {
-        const toCopy: DocumentLike = this.findOne(query)[0]
+    async copy<DocType = any>(query: Searchquery, update: AtomicOperator<DocType> = null): Promise<Collection> {
+        const toCopy: DocumentLike = await this.findOne<DocType>(query)
         const _id = this.config.docIdGenerator(toCopy)
-        if (!toCopy) return this._throwError('Document could not be queried')
-        this.insert({ ...toCopy, _id })
-        if (update != null) this.update({ _id }, update)
+        if (!toCopy) {
+            this._throwError('Document could not be queried')
+            return
+        }
+        await this.insert<DocType>({ ...toCopy, _id })
+        if (update != null) await this.update<DocType>({ _id }, update)
         return this
     }
 }

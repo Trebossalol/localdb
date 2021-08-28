@@ -36,7 +36,7 @@ export interface AtomicOperator<DocType> {
 /******************************************* */
 
 export interface DbConfig {
-    absolutPath: string
+    absolutePath: string
     normalize?: (doc: DocumentLike) => string
 }
 
@@ -48,4 +48,9 @@ export interface DbEntries {
 
 export interface DocumentOptions {
     collection?: Collection
+    searchQuery?: Searchquery
+}
+
+export interface DocumentInsertOptions {
+    writeConcern?: boolean
 }

@@ -19,7 +19,7 @@ export default class Database {
         this.collections = {}
         this.config = configuration
 
-        if (!this.config.absolutPath) throw new Error('Database needs an absolute path beeing passed')
+        if (!this.config.absolutePath) throw new Error('Database needs an absolute path beeing passed')
         this.initalizeCollection(configuration, ...collections)
     }
 
@@ -30,7 +30,7 @@ export default class Database {
             const collection: Collection = collections.find(e => e.name === name)
             this.collections[name] = collection
         })
-        this.applyGlobals(this.config.absolutPath, config)
+        this.applyGlobals(this.config.absolutePath, config)
 
     }
 
