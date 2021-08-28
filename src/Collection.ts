@@ -111,28 +111,27 @@ export default class Collection {
     }
 
     private _throwError(message: string): void {
-        throw new Error(`Collection: ${this.name} - ${message}`)
+        console.log(new Error(`Collection: ${this.name} - ${message}`))
     }
 
     /**
      * 
      * @param document Document data
      * @returns Document<T>
-     * @description Creates an object, which holds the document data and functions to update it
+     * @description Creates a document instance, which holds the document data and methods to update and read it
      */
-    createDocument<T>(document: T): Document<T> {
-       return new Document<T>(document, {
+    createDocument<DocType extends DocumentLike = DocumentLike>(document: DocType): Document<DocType> {
+       return new Document<DocType>(document, {
            collection: this
        })
     }
 
     /**
-     * 
      * @param {Document[]} documents The documents to be inserted into the collection
      * @returns Collection
      * @description Insert documents to the current collection
      */
-    insert(...documents: DocumentLike[]) {
+    insert<DocType = any>(...documents: DocumentLike<DocType>[]) {
         let storage = this._getStorage()
         documents = documents.map(doc => {
             if (doc._id == null) doc._id = this.config.docIdGenerator(doc)
@@ -144,12 +143,12 @@ export default class Collection {
     }
 
     /**
-     * @param {Searchquery} query The search query for the document to chance
+     * @param {Searchquery} query The search query for the document to update
      * @param {AtomicOperator} update Atomic operators which can perform different updates to the document
      * @returns Collection
-     * @description Update propertys on a queried document
+     * @description Updates every document which matches the given query
      */
-    updateOne(query: Searchquery, update: AtomicOperator) {
+    update<DocType = any>(query: Searchquery, update: AtomicOperator<DocType>) {
         
         const entries = Object.entries(update)
 
@@ -219,10 +218,9 @@ export default class Collection {
     }
 
     /**
-     * 
      * @param {Searchquery} querys Search queries to remove from this collection
      * @returns Collection
-     * @description Remove documents from the collection
+     * @description Deletes every document which matches the given query(s)
      */
     delete(...querys: Searchquery[]) {
         querys.forEach(query => this._queryAndStore(query, () => null))
@@ -230,12 +228,11 @@ export default class Collection {
     }
 
     /**
-     * 
-     * @param {Searchquery} Search query for the document
+     * @param {Searchquery} Search query for the documents
      * @returns document[] or an empty array
      * @description Read documents by a search query 
      */
-    findOne<T = any>(query: Searchquery): T[] {
+    find<T = any>(query: Searchquery): T[] {
         const storage = this._getStorage()
         const entries = Object.entries(query)
         const queried: T[] = storage.filter(document => {
@@ -243,26 +240,32 @@ export default class Collection {
             entries.forEach(([key, value]) => {
                 if (document[key] === value) match = true
             })
-            if (!match) return this._throwError('Document could not be queried')
-            return document
+            if (match) return document
         })
-
         return queried
     }
 
     /**
-     * 
+     * @param {Searchquery} Search query for the document
+     * @returns document or an empty array
+     * @description Find the first document matching the query
+     */
+    findOne<DocType = any>(query: Searchquery): DocType | null {
+        return this.find<DocType>(query)[0]
+    }
+ 
+    /**
      * @param {Searchquery} query Search query of the document to copy
      * @param {AtomicOperator} update optional atomic operators to perform on the copied object
      * @returns Collection
-     * @description Copy and optionally update a queried document
+     * @description Copy the first queried document
      */
-    copy(query: Searchquery, update: AtomicOperator = null) {
+    copy<DocType = any>(query: Searchquery, update: AtomicOperator<DocType> = null) {
         const toCopy: DocumentLike = this.findOne(query)[0]
         const _id = this.config.docIdGenerator(toCopy)
         if (!toCopy) return this._throwError('Document could not be queried')
         this.insert({ ...toCopy, _id })
-        if (update != null) this.updateOne({ _id }, update)
+        if (update != null) this.update({ _id }, update)
         return this
     }
 }

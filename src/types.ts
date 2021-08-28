@@ -8,32 +8,29 @@ export interface CollectionConfig {
     normalize?: (doc: DocumentLike) => string
     docIdGenerator?: (doc: DocumentLike) => string
     fileNameGenerator?: (collection: Collection) => string
-    onErrorBehaviour?: 'CREATE_BACKUP_AND_OVERWRITE' | 'OVERWRITE' | 'LOG_ERROR'
+    onErrorBehaviour?: 'CREATE_BACKUP_AND_OVERWRITE' | 'OVERWRITE' | 'LOG_ERROR' | undefined
     onRestartBehaviour?: 'OVERWRITE' | undefined
 }
 
 export type DocId = string
 
-export type Searchquery = {
+export type Searchquery = DocumentLike
+
+export interface DocumentLike<DocType = any> {
+    _id?: string
     [key: string]: any
-    _id?: DocId
 }
 
-export type DocumentLike = { 
-    [key: string]: any, 
-    _id?: DocId 
-}
+export type QueryCallback<DocType = any> = (doc: DocumentLike<DocType>) => (DocumentLike<DocType> | null)
 
-export type QueryCallback = (doc: DocumentLike) => (DocumentLike | null)
-
-export interface AtomicOperator {
-    $set?: { [key: string]: any }
+export interface AtomicOperator<DocType> {
+    $set?: { [k in keyof DocType]: DocType[k] }
     $push?: { [key: string]: any[] }
     $increase?: { [key: string]: number }
     $decrease?: { [key: string]: number }
     $rename?: [string, string][]
-    $writeConcern?: DocumentLike
-    $each?: QueryCallback
+    $writeConcern?: DocumentLike<DocType>
+    $each?: QueryCallback<DocType>
 }
 
 /******************************************* */
