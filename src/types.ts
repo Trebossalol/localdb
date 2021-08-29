@@ -46,8 +46,8 @@ export interface DbEntries {
 
 /******************************************* */
 
-export interface DocumentOptions {
-    collection?: Collection
+export interface DocumentOptions<DocType> {
+    collection?: Collection<DocType>
     searchQuery?: Searchquery
 }
 

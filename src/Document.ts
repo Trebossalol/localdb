@@ -8,12 +8,12 @@ import { DocumentOptions, Searchquery, DocumentLike, AtomicOperator, DocumentIns
  * @param config Optional configuration for the document (It is recommended to specify a collection)
  * @description A document wrapper, which can be used to insert and query data from the database
  */
-export default class Document<DocType extends DocumentLike = DocumentLike> {
-    public doc: DocType
-    public config: DocumentOptions
+export default class Document<DocType extends DocumentLike<DocType> = DocumentLike<any>> {
+    public doc: DocumentLike<DocType>
+    public config: DocumentOptions<DocType>
     private _docId: string | null
 
-    constructor(document: DocType, config?: DocumentOptions) {
+    constructor(document: DocType, config?: DocumentOptions<DocType>) {
         this.doc = document
         this.config = config
         this._docId = null
@@ -21,7 +21,7 @@ export default class Document<DocType extends DocumentLike = DocumentLike> {
         if (config.searchQuery) this.syncDocId()
     }
 
-    private _getColl(collection?: Collection): Collection {
+    private _getColl(collection?: Collection<DocType>): Collection<DocType> {
         let coll = collection ?? this.config.collection
         if (!coll) throw new Error('Collection not available, if this `Document` instance is not create via `Collection` you need to pass a collection in the config parameter')
         return coll
@@ -43,7 +43,7 @@ export default class Document<DocType extends DocumentLike = DocumentLike> {
      * @param collection Optional collection, where to insert the document (default: `Document.config.collection`)
      * @returns void
      */
-    async insert(config?: DocumentInsertOptions, collection?: Collection): Promise<DocumentLike<DocType>> {
+    async insert(config?: DocumentInsertOptions, collection?: Collection<DocType>): Promise<DocumentLike<DocType>> {
         const coll = this._getColl(collection)
         const searchQuery = this._getSearchQuery()
         if (config && config.writeConcern === true) {
@@ -54,7 +54,7 @@ export default class Document<DocType extends DocumentLike = DocumentLike> {
             await this.sync()
             return doc
         } else {
-            const doc =  await coll.insert<DocType>(this.doc)[0]
+            const doc =  await coll.insert(this.doc)[0]
             await this.sync()
             return doc
         }
@@ -65,7 +65,7 @@ export default class Document<DocType extends DocumentLike = DocumentLike> {
      * @param update Atomic operators which can perform different updates to the document
      * @param collection Optional collection, where to update the document (default: `#Document.config.collection)
      */
-    async update(update: AtomicOperator<DocType>, collection?: Collection) {
+    async update(update: AtomicOperator<DocType>, collection?: Collection<DocType>) {
         await this._getColl(collection).update(this._getSearchQuery(), update)
         await this.sync()
     }
@@ -76,7 +76,7 @@ export default class Document<DocType extends DocumentLike = DocumentLike> {
      * @description Returns the document which matches the query
      * @returns DocType
      */
-    async fromDb(query: Searchquery, collection?: Collection): Promise<DocType> {
+    async fromDb(query: Searchquery, collection?: Collection<DocType>): Promise<DocumentLike<DocType>> {
         const coll = this._getColl(collection)
         return await coll.findOne<DocType>(this._getSearchQuery(query))
     }
@@ -87,8 +87,8 @@ export default class Document<DocType extends DocumentLike = DocumentLike> {
      * @param collection Optional collection, where to retrieve the document (default: `#Document.config.collection`)
      * @returns 
      */
-    async sync(query?: Searchquery, collection?: Collection): Promise<void> {
-        const doc = await this.fromDb(this._getSearchQuery(query), collection)
+    async sync(query?: Searchquery, collection?: Collection<DocType>): Promise<void> {
+        const doc = await this.fromDb(this._getSearchQuery(query), collection) as DocumentLike<DocType>
         if (!doc) return
         this.doc = doc
         this.config.searchQuery = { _id: doc._id }

@@ -16,9 +16,11 @@ Create a database object and insert as many collections as you need:
 const db = new Database(
   'mydb',
   {
-    absolutPath: path.resolve('./_test/db'),
+    absolutePath: path.resolve('./_test/db'),
   },
-  [new Collection('accounts'), new Collection('sessions')]
+  [
+	new Collection('accounts'), 
+	new Collection('sessions')]
 )
 ```
 
@@ -53,6 +55,7 @@ You can use many atomic operators, in this example we'll use `$set` to overwrite
 Read values from the database
 
 ```javascript
+db.collections.accounts.findOne({ username: 'trebossa' })
 db.collections.accounts.find({ username: 'trebossa' })
 ```
 
