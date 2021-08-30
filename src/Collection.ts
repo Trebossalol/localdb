@@ -1,4 +1,4 @@
-import * as fs from 'fs'
+import { mkdirSync, writeFileSync } from 'fs'
 import { resolve, join } from 'path'
 import Document from './Document'
 import { CollectionConfig, Searchquery, QueryCallback, DocumentLike,  AtomicOperator } from './types'
@@ -11,7 +11,7 @@ import { readFile, writeFile, exists, mkdir, readdir } from './Util'
  * @param {configuration} config Optional configuration settings, which will be overwritten when the collection is inside a database
  * @description When used standalone without a database, the configuration.allone property must be set to true, otherwise the collection will wait for a configuration to be set manually.
  */
-export default class Collection<DocType extends DocumentLike<DocType> = DocumentLike<any>> {
+export default class Collection<DocType = DocumentLike> {
     public name: string;
     public config: CollectionConfig;
     
@@ -25,34 +25,34 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
 
     async _updateStoragePath(): Promise<Collection> {
         const storagePath = this._getPath()
-        const storageExists = exists(storagePath)
+        const storageExists = await exists(storagePath)
 
         if (!storageExists) {
-            await mkdir(resolve(this.config.folderPath), { recursive: true })
-            await writeFile(storagePath, this._getJson([]))
+            mkdirSync(resolve(this.config.folderPath), { recursive: true })
+            writeFileSync(storagePath, this._getJson([]))
         } else if (this.config.onRestartBehaviour === 'OVERWRITE') await writeFile(storagePath, this._getJson([]))
         return this
     }
 
     private _getFilename(): string {
         const getFileName = this.config.fileNameGenerator
-        if (getFileName) return getFileName(this)
-        return `collection.${this.name}.json`
+        if (getFileName) return getFileName(this as Collection)
+        return `${this.name}.json`
     }
 
     private _getPath(): string {
         return join(this.config.folderPath, this._getFilename())
     }
     
-    private async _getStorage(): Promise<DocumentLike<DocType>> {
+    private async _getStorage(): Promise<DocumentLike<DocType>[]> {
 
         async function overwrite(): Promise<void> {
             await writeFile(this._getPath(), this._getJson([]))
         }
 
         try {
-            const storage = await readFile(this._getPath())
-            const parsed: DocumentLike = JSON.parse(String(storage))
+            const storage = await readFile(this._getPath(), 'utf8')
+            const parsed = JSON.parse(storage) as DocumentLike<DocType>[]
             return parsed    
         } catch(e) {
             if (this.config.onErrorBehaviour == 'CREATE_BACKUP_AND_OVERWRITE') {
@@ -73,9 +73,7 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
                 await overwrite()
                 return [] as DocumentLike
             } else if (this.config.onErrorBehaviour == 'OVERWRITE') await overwrite()
-            else {
-                throw new Error('Invalid localdb file')
-            }
+            else throw new Error('Invalid localdb file') 
         }
     }
 
@@ -84,17 +82,17 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
         return normalize != null ? normalize(data) : JSON.stringify(data, null, 3)
     }
 
-    private async _store(data: any): Promise<Collection<DocType>> {
+    private async _store(data: DocumentLike<DocType>[]): Promise<Collection<DocType>> {
         const json = this._getJson(data)
         await writeFile(this._getPath(), json)
         return this
     }
 
-    private async _queryAndStore(query: Searchquery, callback: QueryCallback): Promise<Collection<DocType>> {
+    private async _queryAndStore(query: Searchquery, callback: QueryCallback<DocType>): Promise<Collection<DocType>> {
         let storage = await this._getStorage()
         const entries = Object.entries(query)
 
-        let newStorage = storage.map((document: DocumentLike) => {
+        let newStorage = storage.map((document) => {
             let match = false
 
             function setMatch(expression: boolean) {
@@ -124,7 +122,7 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
             return callback(document)
         }).filter(e => e != null)
 
-        this._store(newStorage)
+        await this._store(newStorage)
         return this
     }
 
@@ -156,7 +154,7 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
             return doc
         })
         storage.push(...documents)
-        this._store(storage)
+        await this._store(storage)
         return documents
     }
 
@@ -166,7 +164,7 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
      * @returns Collection
      * @description Updates every document which matches the given query
      */
-    async update<DocType = any>(query: Searchquery, update: AtomicOperator<DocType>): Promise<void> {
+    async update(query: Searchquery, update: AtomicOperator<DocType>): Promise<void> {
         
         const entries = Object.entries(update)
 
@@ -223,9 +221,12 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
                     break
 
                 case '$writeConcern': 
-                    const doc = await this.findOne<DocType>(query)
+                    const doc = await this.findOne(query)
                     if (doc == null) await this.insert(update.$writeConcern)
+                    break
                     
+                default:
+                    throw new Error('Invalid atomic operator')
             }
         })
     }
@@ -247,7 +248,7 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
      * @returns document[] or an empty array
      * @description Read documents by a search query 
      */
-    async find<DocType = any>(query: Searchquery): Promise<DocumentLike<DocType[]>> {
+    async find(query: Searchquery): Promise<DocumentLike<DocType[]>> {
         const storage = await this._getStorage()
         const entries = Object.entries(query)
         const queried: DocType[] = storage.filter(document => {
@@ -266,8 +267,8 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
      * @returns document or an empty array
      * @description Find the first document matching the query
      */
-    async findOne<DocType = any>(query: Searchquery): Promise<DocumentLike<DocType> | null> {
-        return (await this.find<DocType>(query))[0]
+    async findOne(query: Searchquery): Promise<DocumentLike<DocType> | null> {
+        return (await this.find(query))[0]
     }
  
     /**
@@ -276,15 +277,15 @@ export default class Collection<DocType extends DocumentLike<DocType> = Document
      * @returns Collection
      * @description Copy the first queried document
      */
-    async copy<DocType = any>(query: Searchquery, update?: AtomicOperator<DocType>): Promise<DocumentLike<DocType>> {
-        const toCopy: DocumentLike = await this.findOne<DocType>(query)
+    async copy(query: Searchquery, update?: AtomicOperator<DocType>): Promise<DocumentLike<DocType>> {
+        const toCopy: DocumentLike = await this.findOne(query)
         const _id = this.config.docIdGenerator(toCopy)
         if (!toCopy) {
             this._throwError('Document could not be queried')
             return
         }
         const doc = (await this.insert({ ...toCopy, _id }))[0]
-        if (update != undefined) await this.update<DocType>({ _id }, update)
+        if (update != undefined) await this.update({ _id }, update)
         return doc
     }
 }

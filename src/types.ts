@@ -16,10 +16,7 @@ export type DocId = string
 
 export type Searchquery = DocumentLike
 
-export interface DocumentLike<DocType = any> {
-    _id?: string
-    [key: string]: any
-}
+export type DocumentLike<DocType = any> = { _id?: string } & DocType
 
 export type QueryCallback<DocType = any> = (doc: DocumentLike<DocType>) => (DocumentLike<DocType> | null)
 
@@ -35,13 +32,14 @@ export interface AtomicOperator<DocType> {
 
 /******************************************* */
 
+export type DatabaseCollections<E> = {
+    [k in keyof E]: E[k]
+}
+
 export interface DbConfig {
     absolutePath: string
     normalize?: (doc: DocumentLike) => string
-}
-
-export interface DbEntries {
-    [key: string]: Collection
+    collectionConfig?: CollectionConfig
 }
 
 /******************************************* */

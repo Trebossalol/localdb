@@ -8,7 +8,7 @@ import { DocumentOptions, Searchquery, DocumentLike, AtomicOperator, DocumentIns
  * @param config Optional configuration for the document (It is recommended to specify a collection)
  * @description A document wrapper, which can be used to insert and query data from the database
  */
-export default class Document<DocType extends DocumentLike<DocType> = DocumentLike<any>> {
+export default class Document<DocType = any> {
     public doc: DocumentLike<DocType>
     public config: DocumentOptions<DocType>
     private _docId: string | null
@@ -34,7 +34,7 @@ export default class Document<DocType extends DocumentLike<DocType> = DocumentLi
     }
 
     private async syncDocId(query?: Searchquery): Promise<void> {
-        const doc = await this.config.collection.findOne<DocType>(this._getSearchQuery(query))
+        const doc = await this.config.collection.findOne(this._getSearchQuery())
         this._docId = doc._id
     }
 
@@ -47,7 +47,7 @@ export default class Document<DocType extends DocumentLike<DocType> = DocumentLi
         const coll = this._getColl(collection)
         const searchQuery = this._getSearchQuery()
         if (config && config.writeConcern === true) {
-            await this.config.collection.update<DocType>(this._getSearchQuery(), {
+            await this.config.collection.update(this._getSearchQuery(), {
                 $writeConcern: this.doc
             })
             const doc = await this.fromDb(searchQuery, coll)
@@ -78,7 +78,7 @@ export default class Document<DocType extends DocumentLike<DocType> = DocumentLi
      */
     async fromDb(query: Searchquery, collection?: Collection<DocType>): Promise<DocumentLike<DocType>> {
         const coll = this._getColl(collection)
-        return await coll.findOne<DocType>(this._getSearchQuery(query))
+        return await coll.findOne(this._getSearchQuery(query))
     }
 
     /**

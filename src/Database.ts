@@ -1,6 +1,14 @@
 import Collection from "./Collection";
-import { DbConfig, CollectionConfig, DbEntries } from './types'
-import * as fs from 'fs'
+import { DbConfig, CollectionConfig, DatabaseCollections } from './types'
+import { existsSync, mkdirSync } from 'fs'
+import { resolve } from 'path'
+
+type ValueOf<T> = T[keyof T];
+
+interface DefaultEntries {
+    accounts: Collection<{username:string}>
+    [key: string]: Collection<any>
+}
 
 /**
  * @class Database
@@ -9,46 +17,36 @@ import * as fs from 'fs'
  * @param collections Collections which are in this database
  * @description A database can hold collections and allows easy access to each collection, every collection is available via the Database.collections property or via the Database.access method
  */
-export default class Database {
+export default class Database<Entries> {
     public dbName: string
-    public collections: DbEntries
+    private collections: DatabaseCollections<Entries>
     public config: DbConfig
+    private collectionList: Collection[]
 
-    constructor(dbName: string, configuration: DbConfig, collections: Collection[]) {
+    constructor(dbName: string, config: DbConfig, collections: Collection[]) {
         this.dbName = dbName
-        this.collections = {}
-        this.config = configuration
-
+        this.config = config
+        this.collectionList = collections
+        this.collections = {} as DatabaseCollections<Entries>
+        
         if (!this.config.absolutePath) throw new Error('Database needs an absolute path beeing passed')
-        this.initalizeCollection(configuration, ...collections)
     }
 
-    private initalizeCollection(config: CollectionConfig, ...collections: Collection[]): void {
-        const names = collections.map(e => e.name)
-            
-        names.forEach(name => {
-            const collection: Collection = collections.find(e => e.name === name)
-            this.collections[name] = collection
-        })
-        this.applyGlobals(this.config.absolutePath, config)
+    async start(): Promise<void> {
+        
+        const folderPath = resolve(this.config.absolutePath, this.dbName)
 
-    }
+        if (existsSync(folderPath) === false) mkdirSync(folderPath, { recursive: true })
 
-    private applyGlobals(folderPath: string, configuration: CollectionConfig) {
+        const entries: any = {}
 
-        if (fs.existsSync(folderPath) === false) fs.mkdirSync(folderPath, { recursive: true })
-
-        Object.keys(this.collections).forEach(collectionName => {
-            const collection: Collection = this.collections[collectionName]
-
-            this.collections[collectionName].config = { 
-                ...collection.config,
-                ...configuration, 
-                fileNameGenerator: (collection) => `${this.dbName}-${collection.name}.json`,
-                folderPath,
-            }
-            this.collections[collectionName]._updateStoragePath()
-        })
+        for (let collection of this.collectionList) {
+            collection.config.folderPath = folderPath
+            await collection._updateStoragePath()
+            entries[collection.name as keyof Entries] = collection
+        }
+    
+        this.collections = entries as DatabaseCollections<Entries>
     }
 
     /**
@@ -57,7 +55,8 @@ export default class Database {
      * @returns Collection | null
      * @description Alternative way to access collections which are inside this database
      */
-    public access(name: string): Collection | null {
-        return this.collections[name] ?? null
+    public access(name: keyof Entries) {
+        if (Object.keys(this.collections).length == 0) throw new Error('Could not access collection, did you initalize the Database via #Database.start() ?')
+        return this.collections[name] as ValueOf<DatabaseCollections<Entries>> ?? null
     }
 }
