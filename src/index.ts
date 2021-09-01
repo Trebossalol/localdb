@@ -1,5 +1,6 @@
-import Collection from './Collection'
+import Collection from './components/Collection'
+import Map from './components/Map';
 import Database from './Database'
 export * from './types'
 
-export { Collection, Database } 
+export { Collection, Map, Database } 

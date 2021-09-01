@@ -1,9 +1,14 @@
-import Collection from './Collection'
+import Collection from './components/Collection'
+import Map from './components/Map';
+
+export type ValueOf<T> = T[keyof T];
+export type AtLeastOne<T, U = {[K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U]
+export type Required<T> = { [P in keyof T]-?: T[P] }
+export type KeysMatching<T, V> = {[K in keyof T]-?: T[K] extends V ? K : never}[keyof T];
 
 /******************************************* */
 
 export interface CollectionConfig {
-    singleInstance?: boolean
     folderPath?: string
     normalize?: (doc: DocumentLike) => string
     docIdGenerator?: (doc: DocumentLike) => string
@@ -14,32 +19,44 @@ export interface CollectionConfig {
 
 export type DocId = string
 
-export type Searchquery = DocumentLike
+export type Searchquery<DocType extends Partial<any> = any> = DocumentLike<Partial<DocType>>
 
 export type DocumentLike<DocType = any> = { _id?: string } & DocType
 
 export type QueryCallback<DocType = any> = (doc: DocumentLike<DocType>) => (DocumentLike<DocType> | null)
 
-export interface AtomicOperator<DocType> {
-    $set?: { [k in keyof DocType]: DocType[k] }
-    $push?: { [key: string]: any[] }
-    $increase?: { [key: string]: number }
-    $decrease?: { [key: string]: number }
-    $rename?: [string, string][]
-    $writeConcern?: DocumentLike<DocType>
-    $each?: QueryCallback<DocType>
-}
+export type AtomicOperator<DocType extends DocumentLike> = AtLeastOne<{
+    $set: Partial<{ 
+        [k in keyof DocType]: DocType[k]
+    }>
+    $push: { 
+        [key: string]: any[]
+    }
+    $increase: Partial<{ 
+        [key: string]: number
+    }>
+    $decrease: { 
+        [key: string]: number
+    }
+    $writeConcern: DocumentLike<DocType>
+    $each: QueryCallback<DocType>
+}>
 
 /******************************************* */
 
-export type DatabaseCollections<E> = {
-    [k in keyof E]: E[k]
+export type DatabaseEntries<E> = {
+    [K in keyof E]: E[K]
 }
 
-export interface DbConfig {
+export type EntryInterface<E extends Record<string, any>> = {
+    [K in keyof E]: Collection | Map
+}
+
+export interface DbConfig<Entries extends EntryInterface<Entries>> {
     absolutePath: string
     normalize?: (doc: DocumentLike) => string
     collectionConfig?: CollectionConfig
+    entries: Entries
 }
 
 /******************************************* */
@@ -52,3 +69,15 @@ export interface DocumentOptions<DocType> {
 export interface DocumentInsertOptions {
     writeConcern?: boolean
 }
+
+/******************************************* */
+
+export interface MapConfig<Template = any> {
+    template: Required<Template>
+    folderPath?: string
+    normalize?: (storage: Map<Template>) => string
+    fileNameGenerator?: (storage: Map<Template>) => string
+    onErrorBehaviour?: 'CREATE_BACKUP_AND_OVERWRITE' | 'OVERWRITE' | 'LOG_ERROR' | undefined
+    onRestartBehaviour?: 'OVERWRITE' | undefined
+}
+
