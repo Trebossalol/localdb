@@ -1,3 +1,5 @@
+# DOCUMENTATION IS NOT UP-TO-DATE, PLEASE SEE [THIS](https://github.com/Trebossalol/localdb/blob/main/test.dev.ts) FILE FOR HELP.
+
 # Documentation for Multi collection DB (Recommended)
 
 > If you want a wrapper for your collections, use the `Database` constructor
