@@ -1,16 +1,8 @@
 import Collection from "./components/Collection";
 import Map from "./components/Map";
-import { DbConfig, DatabaseEntries, EntryInterface, ValueOf } from './types'
+import { DbConfig, EntryInterface, DatabaseEntries, ValueOf } from './types'
 import { existsSync, mkdirSync } from 'fs'
 import { resolve } from 'path'
-
-export type ValuesOf<T extends any[]>= T[number];
-
-interface DefaultEntries {
-    accounts: Collection<any>
-    settings: Map<{}>
-}
-
 
 /**
  * @class Database
@@ -42,20 +34,17 @@ export default class Database<Entries extends EntryInterface<Entries>> {
 
         if (existsSync(folderPath) === false) mkdirSync(folderPath, { recursive: true })
 
-        const entries: any = {}
+        const entries = {} as DatabaseEntries<Entries>
 
         const list = Object.values<Collection|Map>(this.config.entries)
 
         for (let entry of list) {
-            const elem = this.config.entries[entry.name] as Entries[keyof Entries]
-        
-            elem.config.folderPath = folderPath
-            
-            await elem.initalize()
-            entries[entry.name as keyof Entries] = entry
+            entry.config.folderPath = folderPath
+            await entry.initalize()
+            entries[entry.name] = entry
         }
     
-        this.entries = entries as DatabaseEntries<Entries>
+        this.entries = entries as Entries
     }
 
     /**
@@ -64,8 +53,8 @@ export default class Database<Entries extends EntryInterface<Entries>> {
      * @returns Collection | Map
      * @description Access an entry in your database
      */
-    public access<N extends keyof DatabaseEntries<Entries>>  (name: N) {
+    public access<N extends keyof Entries>(name: N) {
         if (Object.keys(this.entries).length == 0) throw new Error('Could not access collection, did you initalize the Database via #Database.start() ?')
-        return this.entries[name] as Entries[N] ?? null
+        return this.entries[name] as Entries[N]
     }
 }

@@ -11,11 +11,11 @@ import { readFile, writeFile, exists, mkdir, readdir } from '../Util'
  * @param {configuration} config Optional configuration settings, which will be overwritten when the collection is inside a database
  * @description When used standalone without a database, the configuration.allone property must be set to true, otherwise the collection will wait for a configuration to be set manually.
  */
-export default class Collection<DocType = DocumentLike> {
-    public name: string;
+export default class Collection<DocType = DocumentLike, Name = any> {
+    public name: Name;
     public config: CollectionConfig;
     
-    constructor(name: string, config: CollectionConfig = {}) {
+    constructor(name: Name, config: CollectionConfig = {}) {
         this.name = name
         this.config = config;
         if (config.docIdGenerator == null) this.config.docIdGenerator = () => (Math.random() * (999999 - 111111) + 111111).toString()
@@ -28,8 +28,8 @@ export default class Collection<DocType = DocumentLike> {
 
         if (!storageExists) {
             mkdirSync(resolve(this.config.folderPath), { recursive: true })
-            writeFileSync(storagePath, this._getJson([]))
-        } else if (this.config.onRestartBehaviour === 'OVERWRITE') await writeFile(storagePath, this._getJson([]))
+            writeFileSync(storagePath, this._stringify([]))
+        } else if (this.config.onRestartBehaviour === 'OVERWRITE') await writeFile(storagePath, this._stringify([]))
         return this
     }
 
@@ -76,13 +76,13 @@ export default class Collection<DocType = DocumentLike> {
         }
     }
 
-    private _getJson(data: any): string {
+    private _stringify(data: Partial<DocumentLike<DocType>>[]): string {
         const normalize = this.config.normalize
         return normalize != null ? normalize(data) : JSON.stringify(data, null, 3)
     }
 
     private async _store(data: DocumentLike<DocType>[]): Promise<Collection<DocType>> {
-        const json = this._getJson(data)
+        const json = this._stringify(data)
         await writeFile(this._getPath(), json)
         return this
     }

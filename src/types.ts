@@ -48,7 +48,7 @@ export type DatabaseEntries<E> = {
     [K in keyof E]: E[K]
 }
 
-export type EntryInterface<E extends Record<string, any>> = {
+export type EntryInterface<E> = {
     [K in keyof E]: Collection | Map
 }
 
@@ -72,12 +72,13 @@ export interface DocumentInsertOptions {
 
 /******************************************* */
 
-export interface MapConfig<Template = any> {
-    template: Required<Template>
+export interface MapConfig<Template extends Object> {
+    template?: Template
     folderPath?: string
-    normalize?: (storage: Map<Template>) => string
+    normalize?: (storage: Partial<Template>) => string
     fileNameGenerator?: (storage: Map<Template>) => string
     onErrorBehaviour?: 'CREATE_BACKUP_AND_OVERWRITE' | 'OVERWRITE' | 'LOG_ERROR' | undefined
     onRestartBehaviour?: 'OVERWRITE' | undefined
 }
 
+export type MapSetCallback<Template> = (x: Template) => Template

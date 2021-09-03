@@ -10,11 +10,11 @@ import { readFile, writeFile, exists, mkdir, readdir } from '../Util'
  * @param {config} config Optional configuration settings, which will be overwritten when the map is inside a database
  * @description Creates a key-value store
  */
-export default class Map<Template = {}> {
+export default class Map<Template = any> {
     public name: string;
     public config: MapConfig<Template>;
     
-    constructor(name: string, config: MapConfig<Template>) {
+    constructor(name: string, config?: MapConfig<Template>) {
         this.name = name
         this.config = config;
         if (config.folderPath == null) this.config.folderPath = './db'
@@ -26,8 +26,8 @@ export default class Map<Template = {}> {
 
         if (!storageExists) {
             mkdirSync(resolve(this.config.folderPath), { recursive: true })
-            writeFileSync(storagePath, this._getJson(this.config.template))
-        } else if (this.config.onRestartBehaviour === 'OVERWRITE') await writeFile(storagePath, this._getJson({}))
+            writeFileSync(storagePath, this._stringify(this.config.template))
+        } else if (this.config.onRestartBehaviour === 'OVERWRITE') await writeFile(storagePath, this._stringify({}))
         return this
     }
 
@@ -74,27 +74,47 @@ export default class Map<Template = {}> {
         }
     }
 
-    private _getJson(data: any): string {
+    private _stringify(data: Partial<Template>): string {
         const normalize = this.config.normalize
         return normalize != null ? normalize(data) : JSON.stringify(data, null, 3)
     }
 
-    private async _store(data: string): Promise<Map<Template>> {
-        const json = this._getJson(data)
+    private async _store(data: Template): Promise<void> {
+        const json = this._stringify(data)
         await writeFile(this._getPath(), json)
-        return this
     }
 
+    /**
+     * @description Receive a value from the storage
+     * @param key The objectg key of the entry
+     * @returns Promise<Template[K]>
+     */
     async get<K extends keyof Template>(key: K): Promise<Template[K]> {
         const json = await this._getStorage()
         return json[key]
     }
 
+    /**
+     * @returns Promise<void>
+     * @param key The object key of the entry
+     * @param value The value to replace the current one with
+     * @description Replace values in the map
+     */
     async set<K extends keyof Template>(key: K, value: Template[K]): Promise<void> {
         const json = await this._getStorage()
-        console.log(json)
         json[key] = value
-        await this._store(this._getJson(json))
+        await this._store(json)
+    }
+
+    /**
+     * @description Delete an entry in your map
+     * @returns Promise<void>
+     * @param key The object key of the entry
+     */
+    async delete<K extends keyof Template>(key: K): Promise<void> {
+        const json = await this._getStorage()
+        delete json[key]
+        await this._store(json)
     }
 
     
