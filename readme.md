@@ -1,1 +1,1 @@
-## Please see [this](https://github.com/Trebossalol/localdb/wiki) for help.
+## Please navigate to the [Wiki](https://github.com/Trebossalol/localdb/wiki) for a documentation.
