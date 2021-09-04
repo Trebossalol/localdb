@@ -11,16 +11,39 @@ export default class Collection<DocType = DocumentLike, Name = any> {
     name: Name;
     config: CollectionConfig;
     constructor(name: Name, config?: CollectionConfig);
+    /**
+     * @description Create the colection-relevant files
+     */
     initalize(): Promise<Collection>;
+    /**
+     * @description Get the filename associated to the collection
+     */
     private _getFilename;
+    /**
+     * @description Get the folder path, where the file is located
+     */
     private _getPath;
+    /**
+     * @description Get the storaged value
+     */
     private _getStorage;
+    /**
+     * @description Stringify the object using the normalization
+     */
     private _stringify;
+    /**
+     * @description Store the data into the json file
+     */
     private _store;
+    /**
+     * @description Execute a function on each document in the collection
+     */
     private _queryAndStore;
+    /**
+     * @description Throw an exception
+     */
     private _throwError;
     /**
-     *
      * @param document Document data
      * @returns Document<DocType>
      * @description Creates a document instance, which holds the document data and methods to update and read it

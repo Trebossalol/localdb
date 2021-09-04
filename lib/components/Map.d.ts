@@ -10,12 +10,34 @@ export default class Map<Template = any> {
     name: string;
     config: MapConfig<Template>;
     constructor(name: string, config?: MapConfig<Template>);
+    /**
+     * @description Create the map-relevant files
+     */
     initalize(): Promise<Map<Template>>;
+    /**
+     * @description Get the filename associated to the map
+     */
     private _getFilename;
+    /**
+     * @description Get the folder path, where the file is located
+     */
     private _getPath;
+    /**
+     * @description Get the storaged value
+     */
     private _getStorage;
+    /**
+     * @description Stringify the object using the normalization
+     */
     private _stringify;
+    /**
+     * @description Store the data into the json file
+     */
     private _store;
+    /**
+     * @description Throw an exception
+     */
+    private _throwError;
     /**
      * @description Receive a value from the storage
      * @param key The objectg key of the entry

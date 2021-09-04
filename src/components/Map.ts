@@ -20,6 +20,9 @@ export default class Map<Template = any> {
         if (config.folderPath == null) this.config.folderPath = './db'
     }
 
+    /**
+     * @description Create the map-relevant files
+     */
     async initalize(): Promise<Map<Template>> {
         const storagePath = this._getPath()
         const storageExists = await exists(storagePath)
@@ -31,16 +34,25 @@ export default class Map<Template = any> {
         return this
     }
 
+    /**
+     * @description Get the filename associated to the map
+     */
     private _getFilename(): string {
         const getFileName = this.config.fileNameGenerator
         if (getFileName) return getFileName(this as Map<Template>)
         return `${this.name}.json`
     }
 
+    /**
+     * @description Get the folder path, where the file is located
+     */
     private _getPath(): string {
         return join(this.config.folderPath, this._getFilename())
     }
-    
+
+    /**
+     * @description Get the storaged value
+     */
     private async _getStorage(): Promise<Template> {
 
         async function overwrite(): Promise<void> {
@@ -74,14 +86,27 @@ export default class Map<Template = any> {
         }
     }
 
+    /**
+     * @description Stringify the object using the normalization
+     */
     private _stringify(data: Partial<Template>): string {
         const normalize = this.config.normalize
         return normalize != null ? normalize(data) : JSON.stringify(data, null, 3)
     }
 
+    /**
+     * @description Store the data into the json file
+     */
     private async _store(data: Template): Promise<void> {
         const json = this._stringify(data)
         await writeFile(this._getPath(), json)
+    }
+
+    /**
+     * @description Throw an exception
+     */
+    private _throwError(message: string): void {
+        console.log(new Error(`Map: ${this.name} - ${message}`))
     }
 
     /**

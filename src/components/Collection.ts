@@ -22,6 +22,9 @@ export default class Collection<DocType = DocumentLike, Name = any> {
         if (config.folderPath == null) this.config.folderPath = './db'
     }
 
+    /**
+     * @description Create the colection-relevant files
+     */
     async initalize(): Promise<Collection> {
         const storagePath = this._getPath()
         const storageExists = await exists(storagePath)
@@ -33,16 +36,25 @@ export default class Collection<DocType = DocumentLike, Name = any> {
         return this
     }
 
+    /**
+     * @description Get the filename associated to the collection
+     */
     private _getFilename(): string {
         const getFileName = this.config.fileNameGenerator
         if (getFileName) return getFileName(this as Collection)
         return `${this.name}.json`
     }
 
+    /**
+     * @description Get the folder path, where the file is located
+     */
     private _getPath(): string {
         return join(this.config.folderPath, this._getFilename())
     }
     
+    /**
+     * @description Get the storaged value
+     */
     private async _getStorage(): Promise<DocumentLike<DocType>[]> {
 
         async function overwrite(): Promise<void> {
@@ -76,17 +88,26 @@ export default class Collection<DocType = DocumentLike, Name = any> {
         }
     }
 
+    /**
+     * @description Stringify the object using the normalization
+     */
     private _stringify(data: Partial<DocumentLike<DocType>>[]): string {
         const normalize = this.config.normalize
         return normalize != null ? normalize(data) : JSON.stringify(data, null, 3)
     }
 
+    /**
+     * @description Store the data into the json file
+     */
     private async _store(data: DocumentLike<DocType>[]): Promise<Collection<DocType>> {
         const json = this._stringify(data)
         await writeFile(this._getPath(), json)
         return this
     }
 
+    /**
+     * @description Execute a function on each document in the collection
+     */
     private async _queryAndStore(query: Searchquery, callback: QueryCallback<DocType>): Promise<Collection<DocType>> {
         let storage = await this._getStorage()
         const entries = Object.entries(query)
@@ -125,12 +146,14 @@ export default class Collection<DocType = DocumentLike, Name = any> {
         return this
     }
 
+    /**
+     * @description Throw an exception
+     */
     private _throwError(message: string): void {
         console.log(new Error(`Collection: ${this.name} - ${message}`))
     }
 
     /**
-     * 
      * @param document Document data
      * @returns Document<DocType>
      * @description Creates a document instance, which holds the document data and methods to update and read it
