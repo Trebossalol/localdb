@@ -117,5 +117,33 @@ export default class Map<Template = any> {
         await this._store(json)
     }
 
+    /**
+     * @description Check if an entry currently exists
+     * @param key The object key of the entry
+     * @returns Promise<boolean>
+     */
+    async has<K extends keyof Template>(key: K): Promise<boolean> {
+        const v = await this.get(key)
+        return v != null
+    }
+
+    /**
+     * @description Retrieve the parsed json file raw
+     * @returns Promise<Template>
+     */
+    async entries(): Promise<Template> {
+        return this._getStorage() 
+    }
+
+    /**
+     * @returns Promise<void>
+     * @description Execute a callback on each entry in your map
+     * @param callback Callback function which takes the value and the key
+     */
+    async forEach(callback: (value: any, key: string) => void): Promise<void> {
+        const entries = await this._getStorage()
+        Object.entries(entries).forEach(([key, value]) => callback(value, key))
+    }
+
     
 }

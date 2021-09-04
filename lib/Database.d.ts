@@ -10,7 +10,7 @@ export default class Database<Entries extends EntryInterface<Entries>> {
     dbName: string;
     private entries;
     config: DbConfig<Entries>;
-    constructor(dbName: string, config: DbConfig<Entries>);
+    constructor(name: string, config: DbConfig<Entries>);
     /**
      * @description Initalizes the collection db files
      * @returns Promise<void>

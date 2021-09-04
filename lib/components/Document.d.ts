@@ -33,7 +33,7 @@ export default class Document<DocType = any> {
      * @description Returns the document which matches the query
      * @returns DocType
      */
-    fromDb(query: Searchquery, collection?: Collection<DocType>): Promise<DocumentLike<DocType>>;
+    fromDb(query?: Searchquery, collection?: Collection<DocType>): Promise<DocumentLike<DocType>>;
     /**
      * @description Sync the database with the Document instance
      * @param query Optional search query of the document to be queried

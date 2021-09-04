@@ -76,7 +76,7 @@ export default class Document<DocType = any> {
      * @description Returns the document which matches the query
      * @returns DocType
      */
-    async fromDb(query: Searchquery, collection?: Collection<DocType>): Promise<DocumentLike<DocType>> {
+    async fromDb(query?: Searchquery, collection?: Collection<DocType>): Promise<DocumentLike<DocType>> {
         const coll = this._getColl(collection)
         return await coll.findOne(this._getSearchQuery(query))
     }

@@ -1,8 +1,9 @@
 import Collection from "./components/Collection";
 import Map from "./components/Map";
 import { DbConfig, EntryInterface, DatabaseEntries, ValueOf } from './types'
-import { existsSync, mkdirSync } from 'fs'
+import { existsSync, mkdirSync, PathLike } from 'fs'
 import { resolve } from 'path'
+import { exists } from './Util'
 
 /**
  * @class Database
@@ -16,8 +17,8 @@ export default class Database<Entries extends EntryInterface<Entries>> {
     private entries: DatabaseEntries<Entries>
     public config: DbConfig<Entries>
 
-    constructor(dbName: string, config: DbConfig<Entries>) {
-        this.dbName = dbName
+    constructor(name: string, config: DbConfig<Entries>) {
+        this.dbName = name
         this.config = config
         this.entries = {} as DatabaseEntries<Entries>
         
