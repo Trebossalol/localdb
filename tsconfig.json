@@ -2,17 +2,15 @@
     "compilerOptions": {
         "target": "es5",
         "module": "commonjs",
-        "declaration": true,
-        "declarationMap": true,
-        "sourceMap": true,
+        //"declaration": true,
+        //"declarationMap": true,
+        //"sourceMap": true,
         "outDir": "./lib",
         "esModuleInterop": true,
-        "watch": true
+        "watch": true,
     },
     "include": [
-        "src/*.ts", 
-        "src/components/Collection.ts", 
-        "src/components/Map.ts",
-        "src/components/Document.ts"    
+        "src",
+        "src/test.ts" 
     ]
 }

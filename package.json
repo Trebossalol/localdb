@@ -24,6 +24,7 @@
   "author": "trebossa",
   "license": "ISC",
   "devDependencies": {
+    "@types/node": "^20.10.6",
     "typescript": "^4.3.2"
   },
   "files": [
@@ -33,6 +34,9 @@
   "directories": {
     "lib": "lib"
   },
-  "dependencies": {},
-  "description": "Local database, easy accessibility, fast, good :)"
+  "description": "Local database, easy accessibility, fast, good :)",
+  "dependencies": {
+    "@types/uuid": "^9.0.7",
+    "uuid": "^9.0.1"
+  }
 }
